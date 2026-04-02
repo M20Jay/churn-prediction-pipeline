@@ -59,13 +59,16 @@ def predict():
     })
 
     # Engineer the 3 missing features
-    df['charges_per_month'] = df['total_charges'] / (df['tenure'] + 1)
-    df['is_high_value'] = (df['monthly_charges'] > 65).astype(int)
     df['tenure_group'] = pd.cut(
         df['tenure'],
-        bins=[0, 12, 24, 48, 60, 72],
-        labels=['0-12', '13-24', '25-48', '49-60', '61-72']
-    ).astype(str)
+        bins=[0, 12, 24, 72],
+        labels=[0, 1, 2])
+    
+    df['tenure_group'] = df['tenure_group'].fillna(0).astype(int)
+    
+    df['charges_per_month'] = df['total_charges'] / (df['tenure'] + 1)
+    
+    df['is_high_value'] = (df['monthly_charges'] > 70).astype(int)
 
     # Drop customerID
     df = df.drop(columns=['customerID'], errors='ignore')
@@ -80,7 +83,6 @@ def predict():
         'tech_support', 'streaming_tv',
         'streaming_movies', 'contract',
         'paperless_billing', 'payment_method',
-        'tenure_group'
     ]
     for col in cat_cols:
         if col in df.columns:
@@ -93,7 +95,7 @@ def predict():
         'online_security', 'online_backup', 'device_protection',
         'tech_support', 'streaming_tv', 'streaming_movies',
         'contract', 'paperless_billing', 'payment_method',
-        'monthly_charges', 'total_charges',
+        'monthly_charges', 'total_charges', 
         'tenure_group', 'charges_per_month', 'is_high_value'
     ]
     df = df[expected_cols]
