@@ -111,10 +111,11 @@ def predict():
     # Save prediction to database
     try:
         conn = psycopg2.connect(
-            dbname="churn_db",
-            user="martinjames",
-            host="localhost"
+        host="host.docker.internal",
+        database="churn_db",
+        user="postgres"
         )
+
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO churn_predictions
