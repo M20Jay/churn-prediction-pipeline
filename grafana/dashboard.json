@@ -24,7 +24,86 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "ffhvc6q22ubk0c"
+        "uid": "cfhyc57foary8d"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "dataset": "churn_db",
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  segment,\n  COUNT(*) AS customer_count,\n  ROUND(AVG(arpu)::numeric, 2) AS avg_arpu,\n  ROUND(AVG(churn_probability)::numeric, 4) AS avg_churn_prob,\n  ROUND(AVG(priority_score)::numeric, 2) AS avg_priority\nFROM churn_segments\nGROUP BY segment\nORDER BY avg_priority DESC",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Customer Segments — ARPU & Risk",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfhyc57foary8d"
       },
       "fieldConfig": {
         "defaults": {
@@ -86,7 +165,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 0
+        "y": 8
       },
       "id": 3,
       "options": {
@@ -136,7 +215,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "ffhvc6q22ubk0c"
+        "uid": "cfhyc57foary8d"
       },
       "fieldConfig": {
         "defaults": {
@@ -164,7 +243,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 16
       },
       "id": 2,
       "options": {
@@ -216,7 +295,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "ffhvc6q22ubk0c"
+        "uid": "cfhyc57foary8d"
       },
       "fieldConfig": {
         "defaults": {
@@ -244,7 +323,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 24
       },
       "id": 1,
       "options": {
@@ -314,6 +393,6 @@
   "timezone": "browser",
   "title": " Churn Prediction Monitor",
   "uid": "adtl26c",
-  "version": 4,
+  "version": 7,
   "weekStart": ""
 }
