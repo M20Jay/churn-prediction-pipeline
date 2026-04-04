@@ -104,7 +104,7 @@ def predict():
     probability = model.predict_proba(df)[0][1]
 
     result = {
-        "customer_id": data.get("customerID", "unknown"),
+        "customer_id": data.get("customer_id", "unknown"),
         "churn_predicted": bool(prediction),
         "churn_probability": round(float(probability), 4)
     }
