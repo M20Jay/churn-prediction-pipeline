@@ -3,6 +3,7 @@
 # Flask API for Churn Prediction
 # ============================================================
 from flask import Flask, request, jsonify
+import os
 import joblib
 import pandas as pd
 import numpy as np
@@ -110,12 +111,8 @@ def predict():
     }
     # Save prediction to database
     try:
-        conn = psycopg2.connect(
-        host="host.docker.internal",
-        database="churn_db",
-        user="postgres"
-        )
-
+        conn = psycopg2.connect(os.environ.get("DATABASE_URL")
+        
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO churn_predictions
