@@ -52,6 +52,8 @@ Start everything: docker compose up -d
 Test the API: curl http://localhost:5001/health
 Stop everything: docker compose down
 
+## Live API
+https://churn-prediction-pipeline-1zue.onrender.com/health
 ---
 
 ## Key Learnings
