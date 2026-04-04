@@ -52,6 +52,18 @@ Start everything: docker compose up -d
 Test the API: curl http://localhost:5001/health
 Stop everything: docker compose down
 
+## Grafana Dashboard
+
+4 panels monitoring the pipeline in real time:
+- Customer Segments — ARPU & Risk
+- Churn Probability Over Time
+- Churn Rate %
+- Total Predictions Made
+
+![Grafana Dashboard](https://github.com/user-attachments/assets/8ec9795e-a484-4d15-9205-207bf37eaaac)
+
+---
+
 ## Live API
 https://churn-prediction-pipeline-1zue.onrender.com/health
 ---
