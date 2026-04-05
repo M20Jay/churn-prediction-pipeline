@@ -5,20 +5,17 @@
 # Base image
 FROM python:3.12-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy requirements first
 COPY src/requirements.txt .
 
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the code
 COPY src/ ./src
 
-# Expose port
-EXPOSE 5000
+# ✅ ADD THIS LINE — copies the model into the image
+COPY src/churn_model.pkl ./src/churn_model.pkl
 
-# Run the app
-CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "5000"]
+EXPOSE 5001
+
+CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "5001"]

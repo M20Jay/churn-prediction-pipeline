@@ -1,153 +1,109 @@
-# ============================================================
-# app.py
-# FastAPI for Churn Prediction
-# ============================================================
-from fastapi import FastAPI
-from pydantic import BaseModel
 import os
 import joblib
 import pandas as pd
-import numpy as np
 import psycopg2
-from datetime import datetime
-from sklearn.preprocessing import LabelEncoder
+from fastapi import FastAPI
+from pydantic import BaseModel
 
-# ============================================================
-# Initialise FastAPI app
-# ============================================================
+# ── App init ──────────────────────────────────────────────────
 app = FastAPI(
     title="Churn Prediction API",
-    description="Real-time telecom customer churn scoring — Week 1 MLOps Pipeline",
+    description="Predicts customer churn probability using XGBoost. Built by Martin James — MLOps Engineer.",
     version="1.0.0"
 )
 
-# Load model
-model = joblib.load('src/churn_model.pkl')
-print("Model successfully loaded")
+# ── Load model once at startup ────────────────────────────────
+model = joblib.load("src/churn_model.pkl")
 
-# ============================================================
-# Input schema — Pydantic validates every request automatically
-# ============================================================
+# ── Pydantic input schema — all 20 features ───────────────────
 class Customer(BaseModel):
-    customerID: str
-    gender: str
-    SeniorCitizen: int
-    Partner: str
-    Dependents: str
-    tenure: int
-    PhoneService: str
-    MultipleLines: str
-    InternetService: str
-    OnlineSecurity: str
-    OnlineBackup: str
-    DeviceProtection: str
-    TechSupport: str
-    StreamingTV: str
-    StreamingMovies: str
-    Contract: str
-    PaperlessBilling: str
-    PaymentMethod: str
-    MonthlyCharges: float
-    TotalCharges: float
+    customer_id: str
+    gender: int
+    senior_citizen: int
+    partner: int
+    dependents: int
+    tenure: float
+    phone_service: int
+    multiple_lines: int
+    internet_service: int
+    online_security: int
+    online_backup: int
+    device_protection: int
+    tech_support: int
+    streaming_tv: int
+    streaming_movies: int
+    contract: int
+    paperless_billing: int
+    payment_method: int
+    monthly_charges: float
+    total_charges: float
+    tenure_group: int
+    charges_per_month: float
+    is_high_value: int
 
-# ============================================================
-# Route 1 — Health Check
-# ============================================================
+# ── Health check ──────────────────────────────────────────────
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "model": "churn_model.pkl",
-        "message": "churn prediction API running"
-    }
+    return {"status": "ok", "model": "churn_model.pkl", "version": "1.0.0"}
 
-# ============================================================
-# Route 2 — Predict Churn
-# ============================================================
+# ── Predict endpoint ──────────────────────────────────────────
 @app.post("/predict")
 def predict(customer: Customer):
 
-    # Convert to DataFrame
-    data = customer.dict()
-    df = pd.DataFrame([data])
+    features = pd.DataFrame([{
+        "gender"           : customer.gender,
+        "senior_citizen"   : customer.senior_citizen,
+        "partner"          : customer.partner,
+        "dependents"       : customer.dependents,
+        "tenure"           : customer.tenure,
+        "phone_service"    : customer.phone_service,
+        "multiple_lines"   : customer.multiple_lines,
+        "internet_service" : customer.internet_service,
+        "online_security"  : customer.online_security,
+        "online_backup"    : customer.online_backup,
+        "device_protection": customer.device_protection,
+        "tech_support"     : customer.tech_support,
+        "streaming_tv"     : customer.streaming_tv,
+        "streaming_movies" : customer.streaming_movies,
+        "contract"         : customer.contract,
+        "paperless_billing": customer.paperless_billing,
+        "payment_method"   : customer.payment_method,
+        "monthly_charges"  : customer.monthly_charges,
+        "total_charges"    : customer.total_charges,
+        "tenure_group"     : customer.tenure_group,
+        "charges_per_month": customer.charges_per_month,
+        "is_high_value"    : customer.is_high_value,
+    }])
 
-    # Rename columns to match training data
-    df = df.rename(columns={
-        'SeniorCitizen':  'senior_citizen',
-        'Partner':        'partner',
-        'Dependents':     'dependents',
-        'PhoneService':   'phone_service',
-        'MultipleLines':  'multiple_lines',
-        'InternetService':'internet_service',
-        'OnlineSecurity': 'online_security',
-        'OnlineBackup':   'online_backup',
-        'DeviceProtection':'device_protection',
-        'TechSupport':    'tech_support',
-        'StreamingTV':    'streaming_tv',
-        'StreamingMovies':'streaming_movies',
-        'Contract':       'contract',
-        'PaperlessBilling':'paperless_billing',
-        'PaymentMethod':  'payment_method',
-        'MonthlyCharges': 'monthly_charges',
-        'TotalCharges':   'total_charges'
-    })
-
-    # Engineer the 3 missing features
-    df['tenure_group'] = pd.cut(
-        df['tenure'],
-        bins=[0, 12, 24, 72],
-        labels=[0, 1, 2]
-    )
-    df['tenure_group'] = df['tenure_group'].fillna(0).astype(int)
-    df['charges_per_month'] = df['total_charges'] / (df['tenure'] + 1)
-    df['is_high_value'] = (df['monthly_charges'] > 70).astype(int)
-
-    # Drop customerID
-    df = df.drop(columns=['customerID'], errors='ignore')
-
-    # Encode categorical columns
-    le = LabelEncoder()
-    cat_cols = [
-        'gender', 'partner', 'dependents',
-        'phone_service', 'multiple_lines',
-        'internet_service', 'online_security',
-        'online_backup', 'device_protection',
-        'tech_support', 'streaming_tv',
-        'streaming_movies', 'contract',
-        'paperless_billing', 'payment_method',
-    ]
-    for col in cat_cols:
-        if col in df.columns:
-            df[col] = le.fit_transform(df[col].astype(str))
-
-    # Reorder columns to match training order
-    expected_cols = [
-        'gender', 'senior_citizen', 'partner', 'dependents', 'tenure',
-        'phone_service', 'multiple_lines', 'internet_service',
-        'online_security', 'online_backup', 'device_protection',
-        'tech_support', 'streaming_tv', 'streaming_movies',
-        'contract', 'paperless_billing', 'payment_method',
-        'monthly_charges', 'total_charges',
-        'tenure_group', 'charges_per_month', 'is_high_value'
-    ]
-    df = df[expected_cols]
-
-    prediction = model.predict(df)[0]
-    probability = model.predict_proba(df)[0][1]
+    churn_probability = float(model.predict_proba(features)[0][1])
+    churn_predicted   = int(churn_probability >= 0.5)
 
     result = {
-        "customer_id": data.get("customerID", "unknown"),
-        "churn_predicted": bool(prediction),
-        "churn_probability": round(float(probability), 4)
+        "customer_id"      : customer.customer_id,
+        "churn_probability": round(churn_probability, 4),
+        "churn_predicted"  : churn_predicted,
+        "risk_level"       : (
+            "HIGH"   if churn_probability > 0.7 else
+            "MEDIUM" if churn_probability > 0.4 else
+            "LOW"
+        )
     }
 
-    # Save prediction to database
+    database_url = os.environ.get("DATABASE_URL")
     try:
-        conn = psycopg2.connect(os.environ.get("DATABASE_URL"))
+        if database_url:
+            conn = psycopg2.connect(database_url)
+        else:
+            conn = psycopg2.connect(
+                host="host.docker.internal",
+                database="churn_db",
+                user="postgres",
+                password=""
+            )
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO churn_predictions
-            (customer_id, churn_probability, churn_predicted, model_version)
+                (customer_id, churn_probability, churn_predicted, model_version)
             VALUES (%s, %s, %s, %s)
         """, (
             result["customer_id"],
@@ -159,7 +115,8 @@ def predict(customer: Customer):
         cur.close()
         conn.close()
         print(f"Prediction saved for {result['customer_id']}")
+
     except Exception as e:
-        print(f"DB save failed: {e}")
+        print(f"DB save failed (non-fatal): {e}")
 
     return result
