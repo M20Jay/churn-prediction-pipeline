@@ -76,7 +76,7 @@ def predict(customer: Customer):
     }])
 
     churn_probability = float(model.predict_proba(features)[0][1])
-    churn_predicted   = int(churn_probability >= 0.5)
+    churn_predicted   = bool(churn_probability >= 0.5)
 
     result = {
         "customer_id"      : customer.customer_id,
