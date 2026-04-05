@@ -1,74 +1,105 @@
 # ============================================================
 # app.py
-# Flask API for Churn Prediction
+# FastAPI for Churn Prediction
 # ============================================================
-from flask import Flask, request, jsonify
+from fastapi import FastAPI
+from pydantic import BaseModel
 import os
 import joblib
 import pandas as pd
 import numpy as np
 import psycopg2
-from datetime import datetime 
+from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
 
-# Initialise Flask app
-app = Flask(__name__)
+# ============================================================
+# Initialise FastAPI app
+# ============================================================
+app = FastAPI(
+    title="Churn Prediction API",
+    description="Real-time telecom customer churn scoring — Week 1 MLOps Pipeline",
+    version="1.0.0"
+)
 
-#load model
+# Load model
 model = joblib.load('src/churn_model.pkl')
-print(" Model successfully loaded")
+print("Model successfully loaded")
+
+# ============================================================
+# Input schema — Pydantic validates every request automatically
+# ============================================================
+class Customer(BaseModel):
+    customerID: str
+    gender: str
+    SeniorCitizen: int
+    Partner: str
+    Dependents: str
+    tenure: int
+    PhoneService: str
+    MultipleLines: str
+    InternetService: str
+    OnlineSecurity: str
+    OnlineBackup: str
+    DeviceProtection: str
+    TechSupport: str
+    StreamingTV: str
+    StreamingMovies: str
+    Contract: str
+    PaperlessBilling: str
+    PaymentMethod: str
+    MonthlyCharges: float
+    TotalCharges: float
 
 # ============================================================
 # Route 1 — Health Check
 # ============================================================
-@app.route('/health', methods = ['GET'])
-def health ():
-    return jsonify ({
-        "status" :"ok",
-        "model" : "churn_model.pkl",
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "model": "churn_model.pkl",
         "message": "churn prediction API running"
-
-    }), 200
+    }
 
 # ============================================================
 # Route 2 — Predict Churn
 # ============================================================
-@app.route('/predict', methods=['POST'])
-def predict():
-    data = request.get_json()
+@app.post("/predict")
+def predict(customer: Customer):
+
+    # Convert to DataFrame
+    data = customer.dict()
     df = pd.DataFrame([data])
 
     # Rename columns to match training data
     df = df.rename(columns={
-        'SeniorCitizen': 'senior_citizen',
-        'Partner': 'partner',
-        'Dependents': 'dependents',
-        'PhoneService': 'phone_service',
-        'MultipleLines': 'multiple_lines',
-        'InternetService': 'internet_service',
+        'SeniorCitizen':  'senior_citizen',
+        'Partner':        'partner',
+        'Dependents':     'dependents',
+        'PhoneService':   'phone_service',
+        'MultipleLines':  'multiple_lines',
+        'InternetService':'internet_service',
         'OnlineSecurity': 'online_security',
-        'OnlineBackup': 'online_backup',
-        'DeviceProtection': 'device_protection',
-        'TechSupport': 'tech_support',
-        'StreamingTV': 'streaming_tv',
-        'StreamingMovies': 'streaming_movies',
-        'Contract': 'contract',
-        'PaperlessBilling': 'paperless_billing',
-        'PaymentMethod': 'payment_method',
+        'OnlineBackup':   'online_backup',
+        'DeviceProtection':'device_protection',
+        'TechSupport':    'tech_support',
+        'StreamingTV':    'streaming_tv',
+        'StreamingMovies':'streaming_movies',
+        'Contract':       'contract',
+        'PaperlessBilling':'paperless_billing',
+        'PaymentMethod':  'payment_method',
         'MonthlyCharges': 'monthly_charges',
-        'TotalCharges': 'total_charges'
+        'TotalCharges':   'total_charges'
     })
 
     # Engineer the 3 missing features
     df['tenure_group'] = pd.cut(
         df['tenure'],
         bins=[0, 12, 24, 72],
-        labels=[0, 1, 2])
-    
+        labels=[0, 1, 2]
+    )
     df['tenure_group'] = df['tenure_group'].fillna(0).astype(int)
-    
     df['charges_per_month'] = df['total_charges'] / (df['tenure'] + 1)
-    
     df['is_high_value'] = (df['monthly_charges'] > 70).astype(int)
 
     # Drop customerID
@@ -96,7 +127,7 @@ def predict():
         'online_security', 'online_backup', 'device_protection',
         'tech_support', 'streaming_tv', 'streaming_movies',
         'contract', 'paperless_billing', 'payment_method',
-        'monthly_charges', 'total_charges', 
+        'monthly_charges', 'total_charges',
         'tenure_group', 'charges_per_month', 'is_high_value'
     ]
     df = df[expected_cols]
@@ -105,14 +136,14 @@ def predict():
     probability = model.predict_proba(df)[0][1]
 
     result = {
-        "customer_id": data.get("customer_id", "unknown"),
+        "customer_id": data.get("customerID", "unknown"),
         "churn_predicted": bool(prediction),
         "churn_probability": round(float(probability), 4)
     }
+
     # Save prediction to database
     try:
-        conn = psycopg2.connect(os.environ.get("DATABASE_URL")
-        
+        conn = psycopg2.connect(os.environ.get("DATABASE_URL"))
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO churn_predictions
@@ -131,10 +162,4 @@ def predict():
     except Exception as e:
         print(f"DB save failed: {e}")
 
-    return jsonify(result), 200
-
-# ============================================================
-# Run the app
-# ============================================================
-if __name__ =='__main__':
-    app.run(host='0.0.0.0', debug=True, port=5000)
+    return result

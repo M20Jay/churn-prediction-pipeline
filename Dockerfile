@@ -21,4 +21,4 @@ COPY src/ ./src
 EXPOSE 5000
 
 # Run the app
-CMD ["python", "src/app.py"]
+CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "5000"]

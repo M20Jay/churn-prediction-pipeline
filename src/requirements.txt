@@ -1,8 +1,9 @@
-flask==2.3.0
+uvicorn
+pydantic
+fastapi
 xgboost
 scikit-learn
 pandas
 numpy
 joblib
 psycopg2-binary
-gunicorn
