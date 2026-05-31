@@ -65,7 +65,7 @@ Stop everything: docker compose down
 ---
 
 ## Live API
-https://churn-prediction-pipeline-1zue.onrender.com/docs
+http://18.184.3.203:8002/docs
 ---
 
 ## Key Learnings
