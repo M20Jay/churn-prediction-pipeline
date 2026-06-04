@@ -482,3 +482,45 @@ A: Grafana reads directly from PostgreSQL via a configured data source. Every pr
 
 *Week 1 of 15 · Churn Prediction Pipeline · Built in Nairobi, Kenya 🇰🇪*
 *Live API: http://18.184.3.203:8002/docs · Repository: https://github.com/M20Jay/churn-prediction-pipeline*
+
+---
+
+## Deep Dives — Critical Concepts
+
+### Why StandardScaler Before KMeans — Not After
+
+KMeans uses Euclidean distance. Without scaling, total_charges (range $18-$8,684) dominates over tenure (range 1-72). The cluster boundaries are drawn by total_charges alone — not actual behaviour.
+
+With StandardScaler (mean=0, std=1) all features contribute equally to distance calculations.
+
+Rule: fit scaler on training data only — transform new data with same fitted scaler.
+
+### Data Leakage — The Most Dangerous Mistake in ML
+
+Data leakage = test set information influences training = falsely optimistic metrics.
+
+```python
+# WRONG — SMOTE before split
+X_res, y_res = smote.fit_resample(X, y)      # sees test data
+X_train, X_test = train_test_split(X_res, y_res)
+
+# CORRECT — split first, SMOTE on train only
+X_train, X_test = train_test_split(X, y)
+X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
+
+# WRONG — scaler fitted on full dataset
+scaler.fit(X)
+
+# CORRECT — scaler fitted on train only
+scaler.fit(X_train)
+X_train_scaled = scaler.transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+```
+
+### Class Imbalance — Why Accuracy is Misleading
+
+73% stay, 27% churn. Predicting "stay" for everyone: Accuracy 73%, Recall on churners 0%. Use Precision, Recall, F1 instead. Business context drives threshold — retention call costs $5, lost customer costs $500/year — lower threshold catches more churners even with false positives.
+
+### Docker Networking — Why localhost Fails Inside Containers
+
+Inside a Docker container, localhost refers to the container itself — not the host machine. PostgreSQL runs in a separate container. Docker Compose creates a shared network — services reach each other by service name. DB_HOST=postgres resolves to the postgres container automatically.
