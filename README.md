@@ -65,7 +65,7 @@ Stop everything: docker compose down
 ---
 
 ## Live API
-http://18.184.3.203:8002/docs
+http://52.57.213.229:8002/docs
 ---
 
 ## Key Learnings
