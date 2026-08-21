@@ -1,4 +1,3 @@
-cat > ~/Documents/GitHub/churn-prediction-pipeline/README.md << 'EOF'
 # Churn Prediction Pipeline
 **Martin James — MLOps Engineer | GitHub: M20Jay | Nairobi, Kenya**
 
@@ -8,6 +7,19 @@ cat > ~/Documents/GitHub/churn-prediction-pipeline/README.md << 'EOF'
 An end-to-end MLOps pipeline that predicts customer churn for a telecom company using real customer data. The system scores customers in real time, stores predictions in PostgreSQL, segments customers by value and risk, and monitors everything through a live Grafana dashboard.
 
 ---
+
+
+## Where This Fits
+
+A churn probability score is not a retention outcome. It's an input that only creates value once it reaches the right team, with the right context:
+
+- **Retention/CRM campaign targeting** — the "High Value At Risk" segment isn't just a label, it's a priority queue: these are the customers worth a retention agent's time or a targeted discount, not a generic mass email.
+- **Customer service prioritization** — a churn score can route high-risk, high-value customers to a different support tier — faster response times, a human agent instead of a bot, before frustration becomes cancellation.
+- **Revenue forecasting** — ARPU-weighted churn risk feeds directly into revenue-at-risk projections finance teams use for forecasting, not just a churn percentage in isolation.
+- **Product/pricing decisions** — patterns in why high-value customers churn can inform pricing tier or product changes, not just reactive retention offers.
+- **Feedback loop** — whether a targeted retention action actually worked is the real label that should feed back into the next model retrain, otherwise the model never learns whether its "at risk" calls were acted on successfully.
+
+This pipeline currently ends at prediction and segmentation — the natural next integration is a CRM or retention-campaign system that consumes the segment output directly, rather than a human manually cross-referencing a dashboard.
 
 ## Tech Stack
 | Tool | Purpose |
