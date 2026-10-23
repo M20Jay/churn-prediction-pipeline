@@ -1,92 +1,121 @@
+import json
 import os
+from pathlib import Path
+from typing import Literal, Optional
+
 import joblib
 import pandas as pd
 import psycopg2
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-# ── App init ──────────────────────────────────────────────────
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_VERSION = "v2.0"
+
 app = FastAPI(
     title="Churn Prediction API",
-    description="Predicts customer churn probability using XGBoost. Built by Martin James — MLOps Engineer.",
-    version="1.0.0"
+    description="Predicts customer churn probability with a leakage-free logistic regression pipeline. Built by Martin James — MLOps Engineer.",
+    version="2.0.0",
 )
 
-# ── Load model once at startup ────────────────────────────────
-model = joblib.load("src/churn_model.pkl")
+pipeline = joblib.load(BASE_DIR / "churn_pipeline.pkl")
+with open(BASE_DIR / "threshold.json") as f:
+    THRESHOLD = json.load(f)["threshold"]
 
-# ── Pydantic input schema — all 20 features ───────────────────
+YesNo = Literal["Yes", "No"]
+YesNoNoInternet = Literal["Yes", "No", "No internet service"]
+
+
 class Customer(BaseModel):
     customer_id: str
-    gender: int
-    senior_citizen: int
-    partner: int
-    dependents: int
-    tenure: float
-    phone_service: int
-    multiple_lines: int
-    internet_service: int
-    online_security: int
-    online_backup: int
-    device_protection: int
-    tech_support: int
-    streaming_tv: int
-    streaming_movies: int
-    contract: int
-    paperless_billing: int
-    payment_method: int
+    gender: Literal["Male", "Female"]
+    senior_citizen: int = Field(ge=0, le=1)
+    partner: YesNo
+    dependents: YesNo
+    tenure: int = Field(ge=0, le=72)
+    phone_service: YesNo
+    multiple_lines: Literal["No phone service", "No", "Yes"]
+    internet_service: Literal["DSL", "Fiber optic", "No"]
+    online_security: YesNoNoInternet
+    online_backup: YesNoNoInternet
+    device_protection: YesNoNoInternet
+    tech_support: YesNoNoInternet
+    streaming_tv: YesNoNoInternet
+    streaming_movies: YesNoNoInternet
+    contract: Literal["Month-to-month", "One year", "Two year"]
+    paperless_billing: YesNo
+    payment_method: Literal[
+        "Electronic check",
+        "Mailed check",
+        "Credit card (automatic)",
+        "Bank transfer (automatic)",
+    ]
     monthly_charges: float
-    total_charges: float
-    tenure_group: int
-    charges_per_month: float
-    is_high_value: int
+    total_charges: Optional[float] = None
 
-# ── Health check ──────────────────────────────────────────────
-@app.get("/health")
-def health():
-    return {"status": "ok", "model": "churn_model.pkl", "version": "1.0.0"}
 
-# ── Predict endpoint ──────────────────────────────────────────
-@app.post("/predict")
-def predict(customer: Customer):
+def tenure_group(tenure: int) -> str:
+    if tenure <= 12:
+        return "New"
+    if tenure <= 24:
+        return "Mid"
+    return "Loyal"
 
-    features = pd.DataFrame([{
-        "gender"           : customer.gender,
-        "senior_citizen"   : customer.senior_citizen,
-        "partner"          : customer.partner,
-        "dependents"       : customer.dependents,
-        "tenure"           : customer.tenure,
-        "phone_service"    : customer.phone_service,
-        "multiple_lines"   : customer.multiple_lines,
-        "internet_service" : customer.internet_service,
-        "online_security"  : customer.online_security,
-        "online_backup"    : customer.online_backup,
-        "device_protection": customer.device_protection,
-        "tech_support"     : customer.tech_support,
-        "streaming_tv"     : customer.streaming_tv,
-        "streaming_movies" : customer.streaming_movies,
-        "contract"         : customer.contract,
-        "paperless_billing": customer.paperless_billing,
-        "payment_method"   : customer.payment_method,
-        "monthly_charges"  : customer.monthly_charges,
-        "total_charges"    : customer.total_charges,
-        "tenure_group"     : customer.tenure_group,
-        "charges_per_month": customer.charges_per_month,
-        "is_high_value"    : customer.is_high_value,
+
+def build_features(c: Customer) -> pd.DataFrame:
+    total = c.total_charges or 0.0
+    return pd.DataFrame([{
+        "gender": c.gender,
+        "SeniorCitizen": c.senior_citizen,
+        "Partner": c.partner,
+        "Dependents": c.dependents,
+        "tenure": c.tenure,
+        "PhoneService": c.phone_service,
+        "MultipleLines": c.multiple_lines,
+        "InternetService": c.internet_service,
+        "OnlineSecurity": c.online_security,
+        "OnlineBackup": c.online_backup,
+        "DeviceProtection": c.device_protection,
+        "TechSupport": c.tech_support,
+        "StreamingTV": c.streaming_tv,
+        "StreamingMovies": c.streaming_movies,
+        "Contract": c.contract,
+        "PaperlessBilling": c.paperless_billing,
+        "PaymentMethod": c.payment_method,
+        "MonthlyCharges": c.monthly_charges,
+        "TotalCharges": total,
+        "tenure_group": tenure_group(c.tenure),
+        "charges_per_month": total / (c.tenure + 1),
+        "is_high_value": int(c.monthly_charges > 70),
     }])
 
-    churn_probability = float(model.predict_proba(features)[0][1])
-    churn_predicted   = bool(churn_probability >= 0.5)
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "model": "churn_pipeline.pkl",
+        "version": "2.0.0",
+        "threshold": THRESHOLD,
+    }
+
+
+@app.post("/predict")
+def predict(customer: Customer):
+    features = build_features(customer)
+    churn_probability = float(pipeline.predict_proba(features)[0][1])
+    churn_predicted = bool(churn_probability >= THRESHOLD)
 
     result = {
-        "customer_id"      : customer.customer_id,
+        "customer_id": customer.customer_id,
         "churn_probability": round(churn_probability, 4),
-        "churn_predicted"  : churn_predicted,
-        "risk_level"       : (
-            "HIGH"   if churn_probability > 0.7 else
-            "MEDIUM" if churn_probability > 0.4 else
+        "churn_predicted": churn_predicted,
+        "threshold_used": round(THRESHOLD, 4),
+        "risk_level": (
+            "HIGH" if churn_probability >= 0.5 else
+            "MEDIUM" if churn_probability >= THRESHOLD else
             "LOW"
-        )
+        ),
     }
 
     database_url = os.environ.get("DATABASE_URL")
@@ -98,24 +127,26 @@ def predict(customer: Customer):
                 host="host.docker.internal",
                 database="churn_db",
                 user="postgres",
-                password=""
+                password="",
             )
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO churn_predictions
                 (customer_id, churn_probability, churn_predicted, model_version)
             VALUES (%s, %s, %s, %s)
-        """, (
-            result["customer_id"],
-            result["churn_probability"],
-            result["churn_predicted"],
-            "v1.0"
-        ))
+            """,
+            (
+                result["customer_id"],
+                result["churn_probability"],
+                result["churn_predicted"],
+                MODEL_VERSION,
+            ),
+        )
         conn.commit()
         cur.close()
         conn.close()
         print(f"Prediction saved for {result['customer_id']}")
-
     except Exception as e:
         print(f"DB save failed (non-fatal): {e}")
 
