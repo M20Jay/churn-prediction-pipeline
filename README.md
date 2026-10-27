@@ -108,6 +108,18 @@ Prediction logging needs PostgreSQL. If it is unreachable, the API logs a warnin
 
 ---
 
+## Tests and CI
+
+The API has six automated tests in `tests/test_api.py`: a health check, the response fields, a high-risk and a low-risk customer, and two invalid-input cases that must return 422.
+
+Run them locally:
+
+    python3 -m venv .venv && source .venv/bin/activate
+    python -m pip install -r src/requirements.txt -r requirements-dev.txt
+    python -m pytest -q
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same tests on every pull request and every push to `main`. A ruleset on `main` requires the `test` check to pass before anything can be merged.
+
 ## Tech stack
 
 | Tool | Purpose |
