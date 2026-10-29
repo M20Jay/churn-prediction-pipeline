@@ -93,3 +93,10 @@ def test_invalid_category_is_rejected():
 def test_tenure_out_of_range_is_rejected():
     r = client.post("/predict", json=customer(tenure=999))
     assert r.status_code == 422
+
+
+def test_risk_ordering():
+    high = client.post("/predict", json=HIGH_RISK).json()["churn_probability"]
+    base = client.post("/predict", json=BASE).json()["churn_probability"]
+    low = client.post("/predict", json=LOW_RISK).json()["churn_probability"]
+    assert high > base > low
