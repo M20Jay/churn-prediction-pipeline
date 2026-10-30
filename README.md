@@ -1,4 +1,5 @@
 # Churn Prediction Pipeline
+[![CI](https://github.com/M20Jay/churn-prediction-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/M20Jay/churn-prediction-pipeline/actions/workflows/ci.yml)
 **Martin James Ng'ang'a — ML / MLOps Engineer | GitHub: M20Jay | Nairobi, Kenya**
 
 ---
