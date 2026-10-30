@@ -89,6 +89,27 @@ Example response:
 
 ---
 
+## Demo
+
+![Demo: the running container scores two customers](screenshots/demo.png)
+
+The service runs in Docker and scores two customers with the saved leak-free pipeline:
+
+- A new customer on a month-to-month contract, with fiber and a high bill, is scored **0.6287**, which is **HIGH**.
+- A five-year customer on a two-year contract, with support and family on the plan, is scored **0.0074**, which is **LOW**.
+- Both are compared with the cost-based threshold of **0.1984**.
+
+Reproduce it in about two minutes (Docker required):
+
+~~~
+docker build -t churn-api .
+docker run -d --name churn-demo -p 5001:5000 churn-api
+./demo/run_demo.sh
+docker rm -f churn-demo
+~~~
+
+---
+
 ## How to run
 With Docker:
 
