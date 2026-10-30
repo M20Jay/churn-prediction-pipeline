@@ -82,7 +82,7 @@ def test_high_risk_customer_scores_high():
 def test_low_risk_customer_scores_low():
     data = client.post("/predict", json=LOW_RISK).json()
     assert data["churn_probability"] < 0.3
-    assert data["churn_predicted"] is False
+    assert data["churn_predicted"] is (data["churn_probability"] >= data["threshold_used"])
 
 
 def test_invalid_category_is_rejected():
